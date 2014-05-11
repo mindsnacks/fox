@@ -240,8 +240,7 @@ def resign_ipa(ipa=None, profile=None, identity=None, keychain=None,
                      '-s', identity,
                      '--resource-rules',
                      os.path.join(app_path, 'ResourceRules.plist'),
-                     '--entitlements',
-                     os.path.join(app_path, 'Entitlements.plist')]
+                     '--preserve-metadata=resource-rules,requirements,entitlements']
 
     if keychain is not None:
         keychain_path = find_keychain(keychain)
