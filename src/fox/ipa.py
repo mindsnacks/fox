@@ -4,7 +4,6 @@ import os
 import provtool
 import re
 import shutil
-from subprocess import check_call, check_output
 import sys
 from tempfile import mkdtemp
 from string import Template
@@ -13,6 +12,17 @@ from .defaults import defaults
 from .helpers import join_cmds, shellify, run_cmd, puts
 from .keychain import add_keychain_cmd, unlock_keychain_cmd, find_keychain
 
+def check_call(call):
+    print ' '.join(call)
+
+    from subprocess import check_call as c
+    c(call)
+
+def check_output(call):
+    print ' '.join(call)
+
+    from subprocess import check_output as c
+    c(call)
 
 def _parse_build_settings(output):
 
@@ -26,7 +36,6 @@ def _parse_build_settings(output):
             build_settings[key] = val
 
     return build_settings
-
 
 def _determine_target_args(workspace=None, scheme=None, project=None, target=None, **kwargs):
     if workspace is None and project is None:
@@ -60,6 +69,19 @@ def _find_prov_profile(input):
 
     return path
 
+def _replace_bundle_id(file_name, old_bundle_id, new_bundle_id, new_team_id):
+    import re
+    import fileinput
+    import sys
+
+    old_pattern = re.compile(r'(<string>)(.+\.' + old_bundle_id + ')(<\/string>)')
+    
+    def repl(match):
+        return match.group(1) + new_team_id + "." + new_bundle_id + match.group(3)
+
+    for line in fileinput.input(file_name, inplace=True):
+        line = old_pattern.sub(repl, line)
+        sys.stdout.write(line)
 
 def build_ipa(workspace=None, scheme=None, project=None, target=None,
               config=None, profile=None, identity=None, keychain=None,
@@ -207,8 +229,9 @@ def build_ipa(workspace=None, scheme=None, project=None, target=None,
                 cwd=built_products_dir)
 
 
-def resign_ipa(ipa=None, profile=None, identity=None, keychain=None,
-               output=None, **kwargs):
+def resign_ipa(ipa=None, profile=None, identity=None, keychain=None, output=None, 
+               old_bundle_id=None, new_bundle_id=None, new_team_id=None, 
+               **kwargs):
     """http://stackoverflow.com/questions/6896029/re-sign-ipa-iphone"""
 
     assert ipa
@@ -236,21 +259,33 @@ def resign_ipa(ipa=None, profile=None, identity=None, keychain=None,
     src_prov_profile_path = _find_prov_profile(profile)
     shutil.copyfile(src_prov_profile_path, embedded_prov_profile_path)
 
-    codesign_args = ['codesign', '-f',
-                     '-s', identity,
-                     '--resource-rules',
-                     os.path.join(app_path, 'ResourceRules.plist'),
-                     '--preserve-metadata=resource-rules,requirements,entitlements']
+    codesign_args = ['codesign', '-f', '-s', identity, app_path,
+                     '--resource-rules', os.path.join(app_path, 'ResourceRules.plist'),
+                     '--verbose=4']
+
+    will_update_bundle_id = old_bundle_id and new_bundle_id and new_team_id
+
+    if will_update_bundle_id:
+        puts("Updating bundle ID: " + old_bundle_id + ' => ' + new_bundle_id)
+
+        # extract and update existing entitlements
+        entitlements_file = os.path.join(mkdtemp(), 'entitlements.plist')
+        check_call(['codesign', '-d', '--entitlements', ':' + entitlements_file, app_path]) 
+        _replace_bundle_id(entitlements_file, old_bundle_id, new_bundle_id, new_team_id)
+
+        # update bundle ID in Info.plist
+        check_call(['/usr/libexec/PlistBuddy', '-c', 'set CFBundleIdentifier ' + new_bundle_id, app_path + '/Info.plist'])
+
+        codesign_args.extend(['--entitlements', entitlements_file])
+    else:
+        codesign_args.extend(['--preserve-metadata=resource-rules,requirements,entitlements'])
 
     if keychain is not None:
         keychain_path = find_keychain(keychain)
         codesign_args.extend(['--keychain', keychain_path])
 
-    codesign_args.extend([app_path])
-
     codesign_output = check_output(codesign_args)
-    puts(codesign_output)
-
+    
     output_path = os.path.abspath(output)
 
     # Change working dir so 'Payload' is at the root of the archive.

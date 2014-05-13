@@ -98,6 +98,9 @@ def main():
     parser_resign.add_argument('--profile', action='store', required=False)
     parser_resign.add_argument('--keychain', action='store', required=False)
     parser_resign.add_argument('--output', action='store', required=True)
+    parser_resign.add_argument('--old_bundle_id', action='store', required=False)
+    parser_resign.add_argument('--new_bundle_id', action='store', required=False)
+    parser_resign.add_argument('--new_team_id', action='store', required=False)
     parser_resign.set_defaults(func=cmd_resign)
 
     # install-profile
