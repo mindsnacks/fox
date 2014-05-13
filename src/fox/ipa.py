@@ -7,22 +7,11 @@ import shutil
 import sys
 from tempfile import mkdtemp
 from string import Template
+from subprocess import check_call, check_output
 
 from .defaults import defaults
 from .helpers import join_cmds, shellify, run_cmd, puts
 from .keychain import add_keychain_cmd, unlock_keychain_cmd, find_keychain
-
-def check_call(call):
-    print ' '.join(call)
-
-    from subprocess import check_call as c
-    c(call)
-
-def check_output(call):
-    print ' '.join(call)
-
-    from subprocess import check_output as c
-    c(call)
 
 def _parse_build_settings(output):
 
