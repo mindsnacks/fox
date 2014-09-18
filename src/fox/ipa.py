@@ -94,6 +94,14 @@ def build_ipa(workspace=None, scheme=None, project=None, target=None,
     build_args.extend(_determine_target_args(workspace=workspace, scheme=scheme,
                                              project=project, target=target))
 
+    build_settings_cmd = ['xcodebuild', '-showBuildSettings'] + build_args
+    print shellify(build_settings_cmd)
+    build_settings_output = check_output(build_settings_cmd)
+    build_settings = _parse_build_settings(build_settings_output)
+
+    if identity is None:
+        identity = build_settings.get('CODE_SIGN_IDENTITY')
+
     if identity is not None:
         build_args.extend([
             'CODE_SIGN_IDENTITY=%s' % (identity)
@@ -122,11 +130,6 @@ def build_ipa(workspace=None, scheme=None, project=None, target=None,
         build_args.extend([
             'PROVISIONING_PROFILE=%s' % (provtool.uuid(prov_profile_path))
         ])
-
-    build_settings_cmd = ['xcodebuild', '-showBuildSettings'] + build_args
-    print shellify(build_settings_cmd)
-    build_settings_output = check_output(build_settings_cmd)
-    build_settings = _parse_build_settings(build_settings_output)
 
     if profile is None:
         # Read the profile from the build settings
