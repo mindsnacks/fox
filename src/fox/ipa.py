@@ -91,6 +91,7 @@ def build_ipa(workspace=None, scheme=None, project=None, target=None,
         build_args.extend(['clean'])
 
     build_args.extend(['build', '-config', config])
+    build_args.extend(['ONLY_ACTIVE_ARCH=no'])
     build_args.extend(_determine_target_args(workspace=workspace, scheme=scheme,
                                              project=project, target=target))
 
