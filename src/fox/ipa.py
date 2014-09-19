@@ -95,18 +95,6 @@ def build_ipa(workspace=None, scheme=None, project=None, target=None,
     build_args.extend(_determine_target_args(workspace=workspace, scheme=scheme,
                                              project=project, target=target))
 
-    build_settings_cmd = ['xcodebuild', '-showBuildSettings'] + build_args
-    print shellify(build_settings_cmd)
-    build_settings_output = check_output(build_settings_cmd)
-    build_settings = _parse_build_settings(build_settings_output)
-
-    if identity is None:
-        identity = build_settings.get('CODE_SIGN_IDENTITY')
-
-    if identity is not None:
-        build_args.extend([
-            'CODE_SIGN_IDENTITY=%s' % (identity)
-        ])
 
     if keychain_cmd is not None:
         run_cmd(add_keychain_cmd(keychain))
@@ -132,6 +120,19 @@ def build_ipa(workspace=None, scheme=None, project=None, target=None,
             'PROVISIONING_PROFILE=%s' % (provtool.uuid(prov_profile_path))
         ])
 
+    build_settings_cmd = ['xcodebuild', '-showBuildSettings'] + build_args
+    print shellify(build_settings_cmd)
+    build_settings_output = check_output(build_settings_cmd)
+    build_settings = _parse_build_settings(build_settings_output)
+
+    if identity is None:
+        identity = build_settings.get('CODE_SIGN_IDENTITY')
+
+    if identity is not None:
+        build_args.extend([
+            'CODE_SIGN_IDENTITY=%s' % (identity)
+        ])
+
     if profile is None:
         # Read the profile from the build settings
         prov_profile_uuid = build_settings.get('PROVISIONING_PROFILE')
@@ -155,6 +156,8 @@ def build_ipa(workspace=None, scheme=None, project=None, target=None,
     built_products_dir = build_settings['BUILT_PRODUCTS_DIR']
     full_product_name = build_settings['FULL_PRODUCT_NAME']
     full_product_path = os.path.join(built_products_dir, full_product_name)
+
+    print built_products_dir
 
     # read Info.plist
     info_plist_path = os.path.join(built_products_dir, build_settings['INFOPLIST_PATH'])
